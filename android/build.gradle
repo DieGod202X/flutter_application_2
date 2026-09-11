@@ -11,6 +11,28 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            project.android {
+                if (namespace == null) {
+                    // Previene errores de namespace en AGP viejo/nuevo
+                }
+            }
+        }
+    }
+}
+
+android {
+    compileSdkVersion 34
+
+    defaultConfig {
+        applicationId "com.example.flutter_application_2"
+        minSdkVersion 21
+        targetSdkVersion 34
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+    }
+    // ...
 }
 
 tasks.register("clean", Delete) {
