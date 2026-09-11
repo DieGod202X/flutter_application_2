@@ -9,17 +9,18 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-
   // Control para mostrar/ocultar contraseña
   bool _obscure = true;
+
   @override
   Widget build(BuildContext context) {
-    //Para obtener el tamaño de la pantalla
+    // Para obtener el tamaño de la pantalla
     final Size size = MediaQuery.of(context).size;
+    
     return Scaffold(
       body: SafeArea(
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Column(
             children: [
               SizedBox(
@@ -27,10 +28,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 height: 200,
                 child: IgnorePointer(
                   child: RiveAnimation.asset('assets/login-bear.riv'),
-                )
+                ),
               ),
-              //Para separar espacio
-              SizedBox(height: 10),
+              // Para separar espacio
+              const SizedBox(height: 10),
               // Campo de texto para Email
               TextField(
                 // Para mostrar el teclado
@@ -40,14 +41,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   prefixIcon: const Icon(Icons.email),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    )
+                  ),
                 ),
               ),
               // Campo de texto para contraseña
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               TextField(
                 obscureText: _obscure,
-                // Para mostrar el teclado
                 decoration: InputDecoration(
                   hintText: 'Password',
                   prefixIcon: const Icon(Icons.lock),
@@ -56,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       _obscure ? Icons.visibility : Icons.visibility_off,
                     ),
                     onPressed: () {
-                      //Refrescar el ícono
+                      // Refrescar el ícono
                       setState(() {
                         _obscure = !_obscure;
                       });
@@ -64,12 +64,12 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    )
+                  ),
                 ),
               ),
             ],
           ),
-          ),
+        ),
       ),
     );
   }
