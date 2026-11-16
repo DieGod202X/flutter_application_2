@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:rive/rive.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'home_screen.dart'; // pantalla principal
+import 'signup_screen.dart'; // pantalla de registro
 import 'dart:async';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State createState() => _LoginScreenState();
+  State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State {
+class _LoginScreenState extends State<LoginScreen> {
   bool _obscure = true;
   bool _rememberMe = false;
   bool _isLoading = false;
@@ -47,48 +50,126 @@ class _LoginScreenState extends State {
     return re.hasMatch(pass);
   }
 
-  void _onLogin() {
+  Future<void> _onLogin() async {
     if (_isLoading) return;
 
     final email = _emailCtrl.text.trim();
-    final pass = _passCtrl.text;
+    final password = _passCtrl.text;
 
-    final eError = isValidEmail(email) ? null : "Invalid Email";
-    final pError = isValidPassword(pass) ? null : "Invalid Password";
+    final eError = isValidEmail(email) ? null : 'Invalid Email';
+    final pError = password.isNotEmpty ? null : 'Password can not be empty';
 
-    // 1. Quitar el foco de los campos sin interrumpir la animación
     FocusScope.of(context).unfocus();
     _typingDebounce?.cancel();
 
-    // 2. Activar bloqueo Anti-Spam y refrescar errores de validación
     setState(() {
       _emailError = eError;
       _passError = pError;
       _isLoading = true;
     });
 
-    // 3. Forzar mirada neutra y garras abajo antes de ejecutar resultado
     _isChecking?.change(false);
     _isHandsUp?.change(false);
-    _numLook?.value = 50.0;
+    _numLook?.value = 60.0;
 
-    // 4. Disparar animaciones de Rive tras el repintado inicial del árbol de widgets
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (eError == null && pError == null) {
-        _trigSuccess?.fire();
-      } else {
-        _trigFail?.fire();
-      }
-    });
+    // Si hay errores locales de formato, lanzar error en Rive y salir
+    if (eError != null || pError != null) {
+      _trigFail?.fire();
+      setState(() => _isLoading = false);
+      return;
+    }
 
-    // 5. Temporizador de bloqueo Anti-Spam (se libera al terminar la animación)
-    Timer(const Duration(milliseconds: 2500), () {
+    try {
+      // Conexión con Firebase Auth (Fase 2)
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // Inicio de sesión correcto
+      _trigSuccess?.fire();
+      await Future.delayed(const Duration(milliseconds: 1500));
+
+      if (!mounted) return;
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
+      // Credenciales incorrectas (el oso se pone triste)
+      _trigFail?.fire();
+
+      setState(() {
+        if (e.code == 'user-not-found' ||
+            e.code == 'wrong-password' ||
+            e.code == 'invalid-credential') {
+          _passError = 'Correo o contraseña incorrectos';
+        } else if (e.code == 'invalid-email') {
+          _emailError = 'Formato de correo inválido';
+        } else {
+          _passError = e.message ?? 'Error de autenticación';
+        }
+      });
+    } finally {
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
       }
-    });
+    }
+  }
+
+  void _showForgotPasswordDialog() {
+    final resetCtrl = TextEditingController(text: _emailCtrl.text);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Recuperar Contraseña'),
+        content: TextField(
+          controller: resetCtrl,
+          decoration: const InputDecoration(
+            hintText: 'Ingresa tu correo electrónico',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepPurple,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              try {
+                // Método para recuperar contraseña con Firebase
+                await FirebaseAuth.instance.sendPasswordResetEmail(
+                  email: resetCtrl.text.trim(),
+                );
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                        '¡Correo de recuperación enviado con éxito! Revisa tu bandeja.'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error: ${e.toString()}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Enviar'),
+          )
+        ],
+      ),
+    );
   }
 
   @override
@@ -238,10 +319,10 @@ class _LoginScreenState extends State {
                                     _isToggleAnimating = true;
                                     _rememberMe = value ?? false;
                                   });
-                                  
-                                  // Simular o esperar el tiempo que dura la transición de la animación
-                                  await Future.delayed(const Duration(milliseconds: 300));
-                                  
+
+                                  await Future.delayed(
+                                      const Duration(milliseconds: 300));
+
                                   if (mounted) {
                                     setState(() {
                                       _isToggleAnimating = false;
@@ -252,10 +333,15 @@ class _LoginScreenState extends State {
                         const Text('Remember me'),
                       ],
                     ),
-                    const Text(
-                      'Forgot password?',
-                      style: TextStyle(
-                        decoration: TextDecoration.underline,
+                    InkWell(
+                      onTap: _isLoading ? null : _showForgotPasswordDialog,
+                      child: const Text(
+                        'Forgot password?',
+                        style: TextStyle(
+                          decoration: TextDecoration.underline,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.deepPurple,
+                        ),
                       ),
                     ),
                   ],
@@ -291,8 +377,18 @@ class _LoginScreenState extends State {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text("Don't have an account?"),
+                      // correctamente con la navegación a SignUpScreen
                       TextButton(
-                        onPressed: _isLoading ? null : () {},
+                        onPressed: _isLoading
+                            ? null
+                            : () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const SignUpScreen(),
+                                  ),
+                                );
+                              },
                         child: const Text(
                           'Sign Up',
                           style: TextStyle(

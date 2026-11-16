@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "177128650170",
+    "project_id": "rive-animated-login-app-yeyo",
+    "storage_bucket": "rive-animated-login-app-yeyo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:177128650170:android:2edc829645edfefa2ad983",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_2"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDfoQxFP4CTQcdlnNXwQ7683U50djzQTv0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
