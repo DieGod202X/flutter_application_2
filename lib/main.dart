@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:login_osito_rive/screens/login_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 
-void main() async {
+Future<void> main() async {
   // 1. Asegurar la vinculación de widgets
   WidgetsFlutterBinding.ensureInitialized();
 

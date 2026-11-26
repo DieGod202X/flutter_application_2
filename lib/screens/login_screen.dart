@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:rive/rive.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'home_screen.dart'; // pantalla principal
+import 'products_screen.dart'; // pantalla de productos de Spring Boot
 import 'signup_screen.dart'; // pantalla de registro
 import 'dart:async';
 
@@ -57,65 +57,93 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passCtrl.text;
 
     final eError = isValidEmail(email) ? null : 'Invalid Email';
-    final pError = password.isNotEmpty ? null : 'Password can not be empty';
+    final pError = isValidPassword(password)
+        ? null
+        : 'Invalid Password (mín. 8 caracteres, A-Z, a-z, 0-9 y símbolo)';
 
     FocusScope.of(context).unfocus();
     _typingDebounce?.cancel();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
     setState(() {
       _emailError = eError;
       _passError = pError;
-      _isLoading = true;
     });
 
     _isChecking?.change(false);
     _isHandsUp?.change(false);
-    _numLook?.value = 60.0;
+    _numLook?.value = 50.0;
 
-    // Si hay errores locales de formato, lanzar error en Rive y salir
+    // 4.9 Si hay errores locales de formato (regex), lanzar fallo y detener aquí
     if (eError != null || pError != null) {
       _trigFail?.fire();
-      setState(() => _isLoading = false);
       return;
     }
 
+    // 5.4 Activar el CircularProgressIndicator
+    setState(() {
+      _isLoading = true;
+    });
+
     try {
-      // Conexión con Firebase Auth (Fase 2)
+      // 5.5 Autenticar usuario en Firebase
+      await Future.delayed(const Duration(seconds: 2));
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // Inicio de sesión correcto
+      // 5.6 Apagar loading, disparar éxito del osito y esperar su animación
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
       _trigSuccess?.fire();
-      await Future.delayed(const Duration(milliseconds: 1500));
+      await Future.delayed(const Duration(seconds: 2));
 
+      // 5.7 Navegar a la pantalla de productos de Spring Boot
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        MaterialPageRoute(builder: (_) => const ProductsScreen()),
       );
-    } on FirebaseAuthException catch (e) {
-      // Credenciales incorrectas (el oso se pone triste)
-      _trigFail?.fire();
-
+    } on FirebaseAuthException catch (_) {
+      // 5.8 Credenciales no válidas sin mostrar error en un campo específico
+      if (!mounted) return;
       setState(() {
-        if (e.code == 'user-not-found' ||
-            e.code == 'wrong-password' ||
-            e.code == 'invalid-credential') {
-          _passError = 'Correo o contraseña incorrectos';
-        } else if (e.code == 'invalid-email') {
-          _emailError = 'Formato de correo inválido';
-        } else {
-          _passError = e.message ?? 'Error de autenticación';
-        }
+        _isLoading = false;
+        _emailError = null;
+        _passError = null;
       });
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      _trigFail?.fire();
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Credenciales no válidas'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 5),
+          ),
+        );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _emailError = null;
+        _passError = null;
+      });
+      _trigFail?.fire();
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text('Credenciales no válidas'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 5),
+          ),
+        );
     }
   }
 
@@ -148,6 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 await FirebaseAuth.instance.sendPasswordResetEmail(
                   email: resetCtrl.text.trim(),
                 );
+                if (!context.mounted) return;
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
@@ -157,6 +186,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 );
               } catch (e) {
+                if (!context.mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text('Error: ${e.toString()}'),
